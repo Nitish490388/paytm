@@ -1,9 +1,89 @@
 import express from "express";
+import zod from "zod";
+import User from "../model/userModel.js";
+import { JWT_SECRET } from "../config.js";
+import jwt from "jsonwebtoken";
 
-const app = express.Router();
+const router = express.Router();
 
-app.post("/signup", (req, res) => {
-
+const signupBody = zod.object({
+  username: zod.string().email(),
+  password: zod.string(),
+  firstName: zod.string(),
+  lastName: zod.string(),
 });
 
-export default app;
+router.post("/signup", async (req, res) => {
+  const { success } = signupBody.safeParse(req.body);
+  if (!success) {
+    return res.status(411).json({
+      message: "Email already taken / Incorrect inputs"
+    })
+  }
+
+  const existingUser = await User.findOne({
+    username: req.body.username
+  });
+
+  if (existingUser) {
+    return res.status(411).json({
+      message: "Email already taken/Incorrect inputs"
+    })
+  };
+
+  const user = await User.create({
+    email: req.body.email,
+    password: req.body.password,
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
+  });
+
+  const userId = user._id;
+
+  const token = jwt.sign({
+    userId
+  }, JWT_SECRET);
+
+  res.json({
+    message: "User created successfully",
+    token: token
+  })
+});
+
+const signinBody = zod.object({
+  username: zod.string().email(),
+  password: zod.string()
+})
+
+router.post("/signin", async (req, res) => {
+  const { success } = signinBody.safeParse(req.body);
+
+  if (!success) {
+    return res.status(411).json({
+      message: "Email already taken / Incorrect inputs"
+    });
+  }
+
+  const user = await User.findOne({
+    username: req.body.username,
+    password: req.body.password
+  });
+
+  if (user) {
+    const token = jwt.sign({
+      userId: user._id
+    }, JWT_SECRET);
+
+    res.json({
+      token: token
+    })
+    return;
+  }
+
+  res.status(411).json({
+    message: "Error while logging in"
+  })
+});
+
+
+export default router;

@@ -1,4 +1,4 @@
-const JWT_SECRET = "your-jwt-secret";
+const JWT_SECRET = process.env.JWT_SECRET_KEY;
 
 export {
   JWT_SECRET
